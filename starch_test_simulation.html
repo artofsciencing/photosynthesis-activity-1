@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Starch Test in a Leaf – Lab Simulation</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a1628;
+    --panel: #0e1f3a;
+    --panel2: #112244;
+    --border: #1e4080;
+    --accent: #00e5ff;
+    --accent2: #ffe066;
+    --green: #39ff7a;
+    --orange: #ff7c3b;
+    --purple: #b57bee;
+    --text: #cce8ff;
+    --muted: #6a9ac4;
+    --correct: #39ff7a;
+    --wrong: #ff4f4f;
+    --xp: #ffe066;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* HEADER */
+  header {
+    background: linear-gradient(90deg, #0e1f3a 0%, #071530 100%);
+    border-bottom: 2px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: 'Rajdhani', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: 2px; }
+  .logo span { color: var(--accent2); }
+  .xp-bar-wrap { display: flex; align-items: center; gap: 10px; }
+  .xp-label { font-family: 'Share Tech Mono', monospace; font-size: .85rem; color: var(--xp); }
+  .xp-bar { width: 140px; height: 10px; background: #1a3060; border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .xp-fill { height: 100%; background: linear-gradient(90deg, var(--xp), #ffaa00); border-radius: 99px; transition: width .5s ease; }
+  .xp-count { font-family: 'Share Tech Mono', monospace; font-size: .85rem; color: var(--xp); min-width: 60px; }
+
+  /* PROGRESS STEPS */
+  .steps-row {
+    display: flex; align-items: center; justify-content: center; gap: 0;
+    padding: 18px 20px 0;
+    flex-wrap: wrap;
+  }
+  .step-node {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer; transition: all .2s;
+    min-width: 80px;
+  }
+  .step-circle {
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--panel);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.1rem;
+    color: var(--muted); transition: all .3s;
+  }
+  .step-node.active .step-circle { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 12px #00e5ff55; background: #0e2a44; }
+  .step-node.done .step-circle { border-color: var(--green); color: var(--green); background: #0e2a20; }
+  .step-label { font-size: .7rem; color: var(--muted); text-align: center; max-width: 80px; line-height: 1.2; }
+  .step-node.active .step-label { color: var(--accent); }
+  .step-node.done .step-label { color: var(--green); }
+  .step-connector { width: 30px; height: 2px; background: var(--border); margin-bottom: 18px; }
+  .step-connector.done { background: var(--green); }
+
+  /* MAIN LAYOUT */
+  .main { display: flex; gap: 20px; padding: 20px; max-width: 1100px; margin: 0 auto; }
+  .lab-panel { flex: 1.2; min-width: 0; }
+  .info-panel { flex: 1; min-width: 0; }
+
+  /* CARD */
+  .card {
+    background: var(--panel);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+  }
+  .card-title {
+    font-family: 'Rajdhani', sans-serif; font-size: 1.1rem; font-weight: 700;
+    color: var(--accent); letter-spacing: 1px; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .step-badge {
+    background: var(--accent); color: var(--bg); border-radius: 6px;
+    font-size: .75rem; padding: 1px 8px; font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  }
+
+  /* CANVAS */
+  canvas { width: 100%; border-radius: 10px; display: block; cursor: default; }
+
+  /* BUTTONS */
+  .btn {
+    padding: 10px 22px; border-radius: 9px; border: none; cursor: pointer;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1rem;
+    letter-spacing: 1px; transition: all .2s; display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { background: #00b8cf; transform: translateY(-1px); }
+  .btn-secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+  .btn-secondary:hover { background: #00e5ff11; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+  /* OBSERVATION BOX */
+  .obs-box {
+    background: var(--panel2); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 14px; margin: 10px 0;
+  }
+  .obs-label { font-size: .8rem; color: var(--muted); margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase; }
+  .obs-text { font-size: .95rem; color: var(--text); line-height: 1.5; min-height: 36px; }
+  .obs-text.reveal { animation: fadeIn .5s; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* QUESTION */
+  .question { font-size: .97rem; color: var(--text); margin-bottom: 10px; line-height: 1.5; }
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .option {
+    padding: 10px 16px; border-radius: 9px; border: 1.5px solid var(--border);
+    background: var(--panel2); cursor: pointer; font-size: .93rem;
+    transition: all .2s; color: var(--text);
+  }
+  .option:hover:not(.disabled) { border-color: var(--accent); background: #0e2a44; }
+  .option.correct { border-color: var(--correct); background: #0e2a20; color: var(--correct); }
+  .option.wrong { border-color: var(--wrong); background: #2a0e0e; color: var(--wrong); }
+  .option.disabled { cursor: not-allowed; }
+  .feedback {
+    margin-top: 10px; padding: 10px 14px; border-radius: 8px;
+    font-size: .9rem; font-weight: 600; display: none;
+  }
+  .feedback.show { display: block; animation: fadeIn .3s; }
+  .feedback.ok { background: #0e2a20; border: 1.5px solid var(--correct); color: var(--correct); }
+  .feedback.bad { background: #2a0e0e; border: 1.5px solid var(--wrong); color: var(--wrong); }
+
+  /* CAUTION */
+  .caution {
+    background: #2a1500; border: 1.5px solid var(--orange);
+    border-radius: 10px; padding: 12px 16px; font-size: .88rem;
+    color: #ffb87a; line-height: 1.5; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .caution-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+  /* XP POP */
+  .xp-pop {
+    position: fixed; top: 80px; right: 30px; background: var(--xp);
+    color: var(--bg); font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: 1.2rem; padding: 8px 20px; border-radius: 99px;
+    pointer-events: none; opacity: 0; z-index: 999;
+    transition: opacity .3s, transform .5s;
+    transform: translateY(0);
+  }
+  .xp-pop.show { opacity: 1; transform: translateY(-20px); }
+
+  /* COMPLETE SCREEN */
+  #complete-screen {
+    display: none; position: fixed; inset: 0;
+    background: rgba(5,10,25,.92);
+    z-index: 200; align-items: center; justify-content: center;
+    flex-direction: column; gap: 18px; text-align: center;
+  }
+  #complete-screen.show { display: flex; }
+  .complete-title {
+    font-family: 'Rajdhani', sans-serif; font-size: 3rem; font-weight: 700;
+    color: var(--green); letter-spacing: 3px; animation: pop .4s;
+  }
+  @keyframes pop { 0%{transform:scale(.5)} 70%{transform:scale(1.1)} 100%{transform:scale(1)} }
+  .complete-sub { font-size: 1.1rem; color: var(--text); max-width: 420px; }
+  .complete-xp { font-family: 'Share Tech Mono', monospace; font-size: 1.6rem; color: var(--xp); }
+  .stars { font-size: 2.5rem; letter-spacing: 6px; }
+
+  /* RESPONSIVE */
+  @media(max-width: 700px) {
+    .main { flex-direction: column; padding: 10px; }
+    .steps-row { gap: 0; }
+    .step-connector { width: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- XP POP -->
+<div class="xp-pop" id="xp-pop">+20 XP</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">🧪 <span>BIO</span>LAB</div>
+  <div class="xp-bar-wrap">
+    <div class="xp-label">XP</div>
+    <div class="xp-bar"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+    <div class="xp-count" id="xp-count">0 / 100</div>
+  </div>
+</header>
+
+<!-- STEPS -->
+<div class="steps-row" id="steps-row">
+  <div class="step-node active" id="sn-0">
+    <div class="step-circle">1</div>
+    <div class="step-label">Heat in Alcohol</div>
+  </div>
+  <div class="step-connector" id="sc-0"></div>
+  <div class="step-node" id="sn-1">
+    <div class="step-circle">2</div>
+    <div class="step-label">Wash in Water</div>
+  </div>
+  <div class="step-connector" id="sc-1"></div>
+  <div class="step-node" id="sn-2">
+    <div class="step-circle">3</div>
+    <div class="step-label">Iodine Test</div>
+  </div>
+  <div class="step-connector" id="sc-2"></div>
+  <div class="step-node" id="sn-3">
+    <div class="step-circle">4</div>
+    <div class="step-label">Conclusion</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- LEFT: Lab Canvas -->
+  <div class="lab-panel">
+    <div class="card">
+      <div class="card-title">
+        <span id="step-badge" class="step-badge">STEP 1</span>
+        <span id="step-title">Heating the Leaf in Alcohol</span>
+      </div>
+      <canvas id="lab-canvas" height="320"></canvas>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-action" onclick="doAction()">▶ Start Heating</button>
+        <button class="btn btn-secondary" id="btn-next" onclick="nextStep()" disabled>Next Step →</button>
+      </div>
+    </div>
+    <div class="caution">
+      <span class="caution-icon">⚠️</span>
+      <span><strong>Safety Note:</strong> Alcohol is highly flammable — never heat it directly over a flame. Always use a <em>water bath</em>. Perform this experiment only with a teacher or parent present.</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: Info + Quiz -->
+  <div class="info-panel">
+    <div class="card" id="info-card">
+      <div class="card-title">🔬 What's Happening?</div>
+      <div class="obs-box">
+        <div class="obs-label">Observation</div>
+        <div class="obs-text" id="obs-text">Start the step to see what happens…</div>
+      </div>
+      <div class="obs-box">
+        <div class="obs-label">Why This Matters</div>
+        <div class="obs-text" id="why-text">–</div>
+      </div>
+    </div>
+
+    <div class="card" id="quiz-card">
+      <div class="card-title">❓ Quick Check</div>
+      <div class="question" id="q-text">Answer after completing the step above.</div>
+      <div class="options" id="q-options"></div>
+      <div class="feedback" id="q-feedback"></div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPLETE -->
+<div id="complete-screen">
+  <div class="stars">⭐⭐⭐</div>
+  <div class="complete-title">EXPERIMENT COMPLETE!</div>
+  <div class="complete-xp" id="final-xp">You earned 0 XP</div>
+  <div class="complete-sub">The blue-black colour with iodine confirms that <strong>starch is present</strong> in the leaf — the product of photosynthesis!</div>
+  <button class="btn btn-primary" onclick="restartAll()" style="margin-top:10px">🔄 Try Again</button>
+</div>
+
+<script>
+// ─── DATA ──────────────────────────────────────────────────────────────
+const STEPS = [
+  {
+    badge: 'STEP 1', title: 'Heating the Leaf in Alcohol',
+    action: 'Start Heating',
+    obs: 'The leaf gradually loses its green colour and turns pale/white. The alcohol turns green as chlorophyll is extracted.',
+    why: 'Chlorophyll makes iodine unreliable — it must be removed first so we can see the starch colour change clearly.',
+    q: 'Why is the leaf placed in alcohol and heated?',
+    opts: ['To kill bacteria on the leaf','To remove chlorophyll from the leaf','To soften the leaf','To add starch to the leaf'],
+    ans: 1, xp: 20
+  },
+  {
+    badge: 'STEP 2', title: 'Washing the Leaf in Water',
+    action: 'Wash Leaf',
+    obs: 'The leaf softens and regains a limp, pale appearance. Residual alcohol is washed away.',
+    why: 'Alcohol makes the leaf brittle and stiff. Washing rehydrates it, making it easier to spread out for the iodine test.',
+    q: 'What does washing with water do to the leaf after the alcohol treatment?',
+    opts: ['Adds chlorophyll back','Adds starch to the leaf','Removes remaining alcohol and rehydrates it','Makes it turn green again'],
+    ans: 2, xp: 20
+  },
+  {
+    badge: 'STEP 3', title: 'Adding Iodine Solution',
+    action: 'Add Iodine',
+    obs: 'The leaf turns blue-black where iodine is applied, confirming the presence of starch.',
+    why: 'Iodine is a starch indicator. It turns blue-black in the presence of starch, which is produced during photosynthesis.',
+    q: 'What does the blue-black colour with iodine indicate?',
+    opts: ['Presence of glucose','Absence of starch','Presence of starch','Presence of chlorophyll'],
+    ans: 2, xp: 25
+  },
+  {
+    badge: 'STEP 4', title: 'Conclusion',
+    action: '–',
+    obs: 'Starch is confirmed in the leaf. Photosynthesis uses CO₂ + H₂O + light energy to produce glucose, which is stored as starch.',
+    why: 'This experiment proves that leaves carry out photosynthesis and store its product (starch) in their cells.',
+    q: 'What is the ultimate purpose of this experiment?',
+    opts: [
+      'To test for the presence of chlorophyll',
+      'To prove leaves perform photosynthesis by detecting stored starch',
+      'To measure the speed of photosynthesis',
+      'To check if alcohol dissolves starch'
+    ],
+    ans: 1, xp: 35
+  }
+];
+
+let currentStep = 0;
+let actionDone = false;
+let questionAnswered = false;
+let xp = 0;
+const MAX_XP = 100;
+
+// ─── CANVAS SETUP ──────────────────────────────────────────────────────
+const canvas = document.getElementById('lab-canvas');
+const ctx = canvas.getContext('2d');
+let animFrame = null;
+let animT = 0;
+let animRunning = false;
+
+function resizeCanvas() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = 310;
+}
+window.addEventListener('resize', () => { resizeCanvas(); drawScene(currentStep, 0); });
+resizeCanvas();
+
+// ─── DRAWING FUNCTIONS ─────────────────────────────────────────────────
+function drawScene(step, t) {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Background gradient
+  const bg = ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,'#0a1628'); bg.addColorStop(1,'#071020');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+  if (step === 0) drawStep1(W, H, t);
+  else if (step === 1) drawStep2(W, H, t);
+  else if (step === 2) drawStep3(W, H, t);
+  else drawStep4(W, H, t);
+}
+
+// ── STEP 1: Water bath with test tube in beaker ──
+function drawStep1(W, H, t) {
+  const cx = W/2, done = t >= 1;
+
+  // Beaker (water bath)
+  const bx = cx - 70, bw = 130, bh = 130, by = H - 160;
+  ctx.strokeStyle = '#4aa8cc'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx,by+bh); ctx.lineTo(bx+bw,by+bh); ctx.lineTo(bx+bw,by); ctx.stroke();
+
+  // Water in beaker (filling animation)
+  const waterLevel = done ? 0.65 : Math.min(0.65, t * 0.75);
+  const wy = by + bh*(1-waterLevel);
+  const wGrad = ctx.createLinearGradient(bx, wy, bx, by+bh);
+  wGrad.addColorStop(0,'rgba(0,180,255,0.18)'); wGrad.addColorStop(1,'rgba(0,100,180,0.35)');
+  ctx.fillStyle = wGrad;
+  ctx.fillRect(bx+3, wy, bw-6, by+bh-wy-3);
+
+  // Water label
+  ctx.fillStyle = '#7ab8d4'; ctx.font = '13px Nunito'; ctx.textAlign = 'left';
+  ctx.fillText('Water', bx-50, wy+10);
+  ctx.strokeStyle = '#4aa8cc'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(bx-10, wy+8); ctx.lineTo(bx+3, wy+8); ctx.stroke();
+
+  // Bunsen burner / flame base
+  const flamex = cx, flamey = H - 28;
+  ctx.fillStyle = '#555'; ctx.fillRect(flamex-20, flamey-10, 40, 16);
+  ctx.fillStyle = '#333'; ctx.fillRect(flamex-6, flamey-22, 12, 14);
+
+  // Flame animation
+  if (t > 0.05) {
+    const flicker = Math.sin(Date.now()/80)*4;
+    drawFlame(ctx, flamex, flamey-22, 18, 30+flicker);
+    // Steam bubbles
+    if (t > 0.3) drawBubbles(ctx, bx+10, bx+bw-10, wy+5, by+bh-5, t);
+  }
+
+  // Test tube (inside beaker, tilted slightly)
+  const tx = cx + 18, ttop = by - 55, tbot = by + bh*0.55;
+  drawTestTube(ctx, tx, ttop, tbot, t, 'alcohol');
+
+  // Leaf in test tube
+  drawLeafInTube(ctx, tx, ttop, tbot, t);
+
+  // Alcohol label
+  ctx.fillStyle = '#b8e0ff'; ctx.font = '13px Nunito'; ctx.textAlign = 'left';
+  ctx.fillText('Alcohol', tx + 22, ttop + 20);
+
+  // Heat arrow at top
+  if (t > 0.1 && t < 0.95) {
+    ctx.fillStyle = '#ffb347'; ctx.font = 'bold 13px Nunito'; ctx.textAlign = 'center';
+    ctx.fillText('🔥 Heating…', cx, by - 70);
+  }
+  if (done) {
+    ctx.fillStyle = '#39ff7a'; ctx.font = 'bold 13px Nunito'; ctx.textAlign = 'center';
+    ctx.fillText('✓ Chlorophyll removed!', cx, by - 70);
+  }
+}
+
+function drawFlame(ctx, x, y, rx, height) {
+  const f1 = ctx.createRadialGradient(x, y, 0, x, y - height*0.4, height);
+  f1.addColorStop(0,'rgba(255,255,180,0.95)');
+  f1.addColorStop(0.3,'rgba(255,150,30,0.8)');
+  f1.addColorStop(0.7,'rgba(255,60,0,0.5)');
+  f1.addColorStop(1,'rgba(255,0,0,0)');
+  ctx.beginPath();
+  ctx.moveTo(x - rx, y);
+  ctx.quadraticCurveTo(x - rx*0.5, y - height*0.5, x, y - height);
+  ctx.quadraticCurveTo(x + rx*0.5, y - height*0.5, x + rx, y);
+  ctx.closePath();
+  ctx.fillStyle = f1; ctx.fill();
+}
+
+function drawBubbles(ctx, xmin, xmax, ymin, ymax, t) {
+  const seed = Math.floor(t * 15);
+  for (let i=0; i<5; i++) {
+    const bx = xmin + ((seed*7+i*37)%(xmax-xmin));
+    const progress = ((t*8 + i*0.3) % 1);
+    const by = ymax - (ymax-ymin)*progress;
+    ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(100,200,255,0.6)'; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+}
+
+function drawTestTube(ctx, x, top, bot, t, fill) {
+  const w = 18;
+  ctx.save(); ctx.translate(x, 0);
+  // tube body
+  ctx.strokeStyle = 'rgba(180,220,255,0.7)'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(-w/2, top); ctx.lineTo(-w/2, bot-8);
+  ctx.quadraticCurveTo(-w/2, bot+4, 0, bot+4);
+  ctx.quadraticCurveTo(w/2, bot+4, w/2, bot-8);
+  ctx.lineTo(w/2, top); ctx.stroke();
+
+  // fill (alcohol → green as t increases)
+  const gr = t > 0 ? Math.min(255, Math.floor(t * 180)) : 0;
+  const fillColor = `rgba(${80-t*40}, ${gr}, ${60}, 0.6)`;
+  const fillH = (bot - top) * 0.6;
+  ctx.beginPath(); ctx.moveTo(-w/2+3, bot-8);
+  ctx.quadraticCurveTo(-w/2+3, bot+2, 0, bot+2);
+  ctx.quadraticCurveTo(w/2-3, bot+2, w/2-3, bot-8);
+  ctx.lineTo(w/2-3, bot - fillH); ctx.lineTo(-w/2+3, bot - fillH); ctx.closePath();
+  ctx.fillStyle = fillColor; ctx.fill();
+  ctx.restore();
+}
+
+function drawLeafInTube(ctx, x, top, bot, t) {
+  ctx.save(); ctx.translate(x, (top+bot)/2 - 10);
+  // leaf shape
+  const g = t > 0 ? Math.max(0, 180 - t*180) : 180;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 10, 18, -0.3, 0, Math.PI*2);
+  ctx.fillStyle = `rgba(${20+g*0.3},${g},30,0.9)`;
+  ctx.fill();
+  ctx.strokeStyle = `rgba(${g*0.2},${g*0.5},10,0.7)`; ctx.lineWidth = 1;
+  ctx.stroke();
+  // midrib
+  ctx.beginPath(); ctx.moveTo(0,-16); ctx.lineTo(0,16);
+  ctx.strokeStyle = `rgba(${g*0.2},${g*0.6},10,0.8)`; ctx.lineWidth = 1; ctx.stroke();
+  ctx.restore();
+}
+
+// ── STEP 2: Washing ──
+function drawStep2(W, H, t) {
+  const cx = W/2, done = t >= 1;
+
+  // Wash basin / bowl
+  const bx = cx-60, bw=120, bh=70, by=H-130;
+  ctx.strokeStyle='#4aa8cc'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx-12,by+bh); ctx.lineTo(bx+bw+12,by+bh); ctx.lineTo(bx+bw,by); ctx.stroke();
+
+  // Water
+  const waterFill = Math.min(t*1.2, 0.9);
+  const wy = by + bh*(1-waterFill);
+  ctx.fillStyle='rgba(0,160,220,0.22)';
+  ctx.fillRect(bx+4, wy, bw-8, by+bh-wy-4);
+
+  // Water ripple
+  if (t > 0.1 && t < 0.9) {
+    for(let r=5; r<35; r+=9) {
+      ctx.beginPath(); ctx.arc(cx, by+bh*0.6, r + (t*40%9), 0, Math.PI);
+      ctx.strokeStyle=`rgba(100,200,255,${0.4-r/100})`; ctx.lineWidth=1.2; ctx.stroke();
+    }
+  }
+
+  // Leaf being washed
+  const leafY = by + bh*0.45;
+  const wobble = t > 0 && t < 0.9 ? Math.sin(t*20)*4 : 0;
+  ctx.save(); ctx.translate(cx + wobble, leafY);
+  const greenLevel = done ? 30 : Math.max(30, 60 - t*30);
+  ctx.beginPath(); ctx.ellipse(0,0,16,26,-0.1,0,Math.PI*2);
+  ctx.fillStyle=`rgba(220,${greenLevel+180},150,0.92)`; ctx.fill();
+  ctx.strokeStyle='rgba(180,150,100,0.6)'; ctx.lineWidth=1.2; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,-24); ctx.lineTo(0,24);
+  ctx.strokeStyle='rgba(160,130,80,0.7)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.restore();
+
+  if (done) {
+    ctx.fillStyle='#39ff7a'; ctx.font='bold 13px Nunito'; ctx.textAlign='center';
+    ctx.fillText('✓ Leaf rehydrated — ready for iodine!', cx, by-18);
+  } else if (t > 0) {
+    ctx.fillStyle='#7ab8d4'; ctx.font='13px Nunito'; ctx.textAlign='center';
+    ctx.fillText('Washing away alcohol…', cx, by-18);
+  }
+}
+
+// ── STEP 3: Iodine ──
+function drawStep3(W, H, t) {
+  const cx = W/2, done = t >= 1;
+
+  // Petri dish
+  ctx.strokeStyle='#8888aa'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.ellipse(cx, H-100, 70, 22, 0, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.fillStyle='rgba(50,40,80,0.3)';
+  ctx.beginPath(); ctx.ellipse(cx, H-100, 68, 20, 0, 0, Math.PI*2); ctx.fill();
+
+  // Leaf on dish
+  const stain = Math.min(t*1.3,1);
+  const r = Math.floor(20*(1-stain));
+  const g = Math.floor(20*(1-stain));
+  const b = Math.floor(20+stain*100);
+  ctx.save(); ctx.translate(cx, H-100);
+  ctx.scale(1,0.35);
+  ctx.beginPath(); ctx.ellipse(0,0,38,60,0,0,Math.PI*2);
+  ctx.fillStyle=`rgba(${r+30*(1-stain)},${g+80*(1-stain)},${b},0.95)`; ctx.fill();
+  ctx.strokeStyle='rgba(80,60,100,0.7)'; ctx.lineWidth=2; ctx.stroke();
+  // Leaf veins
+  ctx.strokeStyle=`rgba(${r},${g},${b+20},0.7)`; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,-55); ctx.lineTo(0,55); ctx.stroke();
+  for(let i=-3;i<=3;i++) {
+    ctx.beginPath(); ctx.moveTo(0,i*15); ctx.lineTo(30*Math.sign(i||1),i*15+10*Math.sign(i||1)); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Iodine bottle + dropper
+  if (t < 0.9) {
+    // Bottle
+    ctx.fillStyle='#aa8820'; ctx.fillRect(cx+90, H-220, 28, 60);
+    ctx.fillStyle='#cc9922'; ctx.fillRect(cx+93, H-235, 22, 20);
+    ctx.fillStyle='#886600'; ctx.font='9px Nunito'; ctx.textAlign='center';
+    ctx.fillText('Iodine', cx+104, H-175);
+    // Dropper with drops
+    if (t > 0.1) {
+      ctx.strokeStyle='#cc8800'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(cx+100, H-216); ctx.lineTo(cx+80, H-140); ctx.stroke();
+      // Drop falling
+      const dropY = H-140 + (t%0.3)*120;
+      ctx.fillStyle='rgba(180,120,0,0.8)';
+      ctx.beginPath(); ctx.ellipse(cx+78, dropY, 4, 5, 0, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  if (done) {
+    ctx.fillStyle='#b57bee'; ctx.font='bold 14px Nunito'; ctx.textAlign='center';
+    ctx.fillText('Blue-black colour = STARCH PRESENT! ✓', cx, H-145);
+  } else if (t > 0.1) {
+    ctx.fillStyle='#ffe066'; ctx.font='13px Nunito'; ctx.textAlign='center';
+    ctx.fillText('Applying iodine solution…', cx, H-145);
+  }
+}
+
+// ── STEP 4: Conclusion ──
+function drawStep4(W, H, t) {
+  const cx = W/2;
+  // Photosynthesis equation
+  const items = [
+    { icon:'☀️', label:'Light', x: cx-160 },
+    { icon:'💧', label:'Water', x: cx-80 },
+    { icon:'💨', label:'CO₂', x: cx },
+    { icon:'→', label:'', x: cx+60, isArrow:true },
+    { icon:'🍬', label:'Glucose', x: cx+110 },
+    { icon:'→', label:'', x: cx+175, isArrow:true },
+    { icon:'🟣', label:'Starch', x: cx+220 },
+  ];
+  const progress = Math.min(t * 1.2, 1);
+  const show = Math.floor(progress * items.length);
+
+  ctx.font = '32px serif'; ctx.textAlign = 'center';
+  for (let i=0; i<show; i++) {
+    const it = items[i];
+    const alpha = Math.min(1, (progress * items.length - i));
+    ctx.globalAlpha = alpha;
+    ctx.font = it.isArrow ? 'bold 26px Nunito' : '36px serif';
+    ctx.fillStyle = it.isArrow ? '#ffe066' : 'white';
+    ctx.fillText(it.icon, it.x, H/2 - 20);
+    if (it.label) {
+      ctx.font = '12px Nunito'; ctx.fillStyle = '#aaccff';
+      ctx.fillText(it.label, it.x, H/2 + 8);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Leaf with blue-black patches
+  ctx.save(); ctx.translate(cx, H-100);
+  ctx.scale(1.1, 0.35);
+  ctx.beginPath(); ctx.ellipse(0,0,40,65,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(20,10,60,0.95)'; ctx.fill();
+  ctx.strokeStyle='#6644aa'; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='#b57bee'; ctx.font='bold 13px Nunito'; ctx.textAlign='center';
+  ctx.fillText('Leaf = Blue-black = Starch = Photosynthesis ✅', cx, H-52);
+
+  if (t >= 0.8) {
+    ctx.fillStyle='#39ff7a'; ctx.font='bold 15px Nunito'; ctx.textAlign='center';
+    ctx.fillText('🎉 Experiment Conclusion Confirmed!', cx, 50);
+  }
+}
+
+// ─── ANIMATION ──────────────────────────────────────────────────────────
+function startAnimation(step, onDone) {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  animT = 0; animRunning = true;
+  const duration = step === 0 ? 4000 : step === 3 ? 3000 : 2500;
+  const start = performance.now();
+  function tick(now) {
+    animT = Math.min((now - start) / duration, 1);
+    drawScene(step, animT);
+    if (animT < 1) animFrame = requestAnimationFrame(tick);
+    else { animRunning = false; onDone && onDone(); }
+  }
+  animFrame = requestAnimationFrame(tick);
+}
+
+// ─── UI LOGIC ───────────────────────────────────────────────────────────
+function setupStep(i) {
+  const s = STEPS[i];
+  document.getElementById('step-badge').textContent = s.badge;
+  document.getElementById('step-title').textContent = s.title;
+  document.getElementById('btn-action').textContent = '▶ ' + s.action;
+  document.getElementById('btn-action').disabled = (i === 3);
+  document.getElementById('btn-next').disabled = true;
+  document.getElementById('obs-text').textContent = 'Start the step to see what happens…';
+  document.getElementById('why-text').textContent = '–';
+  document.getElementById('q-text').textContent = s.q;
+  document.getElementById('q-feedback').className = 'feedback';
+  actionDone = false; questionAnswered = false;
+
+  // Build options
+  const opts = document.getElementById('q-options');
+  opts.innerHTML = '';
+  s.opts.forEach((o, idx) => {
+    const div = document.createElement('div');
+    div.className = 'option disabled';
+    div.textContent = String.fromCharCode(65+idx) + '. ' + o;
+    opts.appendChild(div);
+  });
+
+  // Update step nodes
+  for (let j=0; j<4; j++) {
+    const node = document.getElementById('sn-'+j);
+    node.className = 'step-node';
+    if (j < i) node.classList.add('done');
+    if (j === i) node.classList.add('active');
+    if (j < i) document.getElementById('sc-'+(j)).className = 'step-connector done';
+    else if (j < 3) document.getElementById('sc-'+j).className = 'step-connector';
+  }
+
+  drawScene(i, 0);
+
+  if (i === 3) {
+    // Auto-start conclusion
+    setTimeout(() => doAction(), 300);
+  }
+}
+
+function doAction() {
+  const btn = document.getElementById('btn-action');
+  btn.disabled = true;
+  startAnimation(currentStep, () => {
+    const s = STEPS[currentStep];
+    document.getElementById('obs-text').textContent = s.obs;
+    document.getElementById('obs-text').className = 'obs-text reveal';
+    document.getElementById('why-text').textContent = s.why;
+    document.getElementById('why-text').className = 'obs-text reveal';
+    actionDone = true;
+    // Enable quiz
+    document.querySelectorAll('.option').forEach((el, idx) => {
+      el.classList.remove('disabled');
+      el.onclick = () => answerQ(idx);
+    });
+    if (currentStep === 3) {
+      document.getElementById('btn-next').textContent = 'Finish 🎉';
+      document.getElementById('btn-next').disabled = false;
+      document.getElementById('btn-next').onclick = showComplete;
+      // auto-answer last step
+    }
+  });
+}
+
+function answerQ(idx) {
+  if (questionAnswered) return;
+  questionAnswered = true;
+  const s = STEPS[currentStep];
+  const opts = document.querySelectorAll('.option');
+  const fb = document.getElementById('q-feedback');
+  opts.forEach(o => o.classList.add('disabled'));
+  opts[idx].classList.add(idx === s.ans ? 'correct' : 'wrong');
+  if (idx !== s.ans) opts[s.ans].classList.add('correct');
+  if (idx === s.ans) {
+    fb.textContent = '✓ Correct! ' + getExplanation(currentStep);
+    fb.className = 'feedback show ok';
+    addXP(s.xp);
+  } else {
+    fb.textContent = '✗ Not quite. ' + getExplanation(currentStep);
+    fb.className = 'feedback show bad';
+    addXP(5);
+  }
+  if (currentStep < 3) document.getElementById('btn-next').disabled = false;
+}
+
+function getExplanation(step) {
+  return [
+    'Chlorophyll must be removed so iodine can reveal starch without interference.',
+    'Washing removes alcohol, which would otherwise interfere with the iodine result.',
+    'Iodine solution turns blue-black in the presence of starch — a classic starch test.',
+    'Detecting starch in a leaf provides evidence that photosynthesis has occurred.'
+  ][step];
+}
+
+function nextStep() {
+  if (currentStep < 3) {
+    currentStep++;
+    document.getElementById('btn-next').onclick = nextStep;
+    document.getElementById('btn-next').textContent = 'Next Step →';
+    setupStep(currentStep);
+  }
+}
+
+function showComplete() {
+  document.getElementById('final-xp').textContent = 'You earned ' + xp + ' XP!';
+  document.getElementById('complete-screen').className = 'show';
+}
+
+function addXP(amount) {
+  xp = Math.min(xp + amount, MAX_XP);
+  const fill = document.getElementById('xp-fill');
+  fill.style.width = (xp / MAX_XP * 100) + '%';
+  document.getElementById('xp-count').textContent = xp + ' / ' + MAX_XP;
+  const pop = document.getElementById('xp-pop');
+  pop.textContent = '+' + amount + ' XP';
+  pop.className = 'xp-pop show';
+  setTimeout(() => pop.className = 'xp-pop', 1200);
+}
+
+function restartAll() {
+  xp = 0; currentStep = 0;
+  document.getElementById('xp-fill').style.width = '0%';
+  document.getElementById('xp-count').textContent = '0 / 100';
+  document.getElementById('complete-screen').className = '';
+  document.getElementById('btn-next').onclick = nextStep;
+  document.getElementById('btn-next').textContent = 'Next Step →';
+  setupStep(0);
+}
+
+// ─── INIT ───────────────────────────────────────────────────────────────
+setupStep(0);
+</script>
+</body>
+</html>
